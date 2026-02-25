@@ -1,0 +1,26 @@
+# sway-config
+
+# Define the modifier key (Super/Windows key)
+set $mod Mod4
+
+# Define workspaces
+set $ws1 "1: TNSN Control Layer"
+set $ws2 "2: Node-RED Workflows"
+set $ws3 "3: AI Studio / Dev"
+
+# Strip all window borders and title bars
+default_border none
+default_floating_border none
+
+# Auto-launch applications into their dedicated workspaces
+exec swaymsg workspace $ws1; exec chromium-browser --kiosk --app="http://localhost:3000" 
+exec swaymsg workspace $ws2; exec chromium-browser --kiosk --app="http://localhost:1880"
+exec swaymsg workspace $ws3; exec alacritty
+
+# Keybindings to instantly switch environments
+bindsym $mod+1 workspace $ws1
+bindsym $mod+2 workspace $ws2
+bindsym $mod+3 workspace $ws3
+
+# Prevent users from closing windows accidentally
+bindsym $mod+Shift+q exec echo "Kill command disabled"
