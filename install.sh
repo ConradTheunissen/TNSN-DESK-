@@ -36,7 +36,7 @@ echo "6. Injecting Sway auto-start into bash profile..."
 # Ensure Sway only launches on the first terminal to prevent boot loops
 if ! grep -q "exec sway" ~/.bash_profile 2>/dev/null; then
 cat <<'EOF' >> ~/.bash_profile
-if [ -z "\$DISPLAY" ] && [ "\$XDG_VTNR" = 1 ]; then
+if [ -z "$DISPLAY" ] && [ "$XDG_VTNR" = 1 ]; then
   exec sway
 fi
 EOF
