@@ -19,6 +19,8 @@ function collectEnvReferences(node) {
     if (typeof value === 'string') values.push(value);
   }
   return values.join('\n');
+function asSet(values) {
+  return new Set(values.filter((value) => value !== undefined));
 }
 
 const raw = fs.readFileSync(flowPath, 'utf8');
@@ -44,6 +46,7 @@ for (const node of flow) {
 
 const tabIds = new Set(flow.filter((node) => node.type === 'tab').map((node) => node.id));
 assert(tabIds.size === 1, 'expected exactly one tab node');
+assert(tabIds.size >= 1, 'expected at least one tab node');
 
 for (const node of flow) {
   if (node.type !== 'tab' && node.type !== 'telegram bot') {
@@ -81,6 +84,11 @@ const requiredNodes = {
   n_system_exec: 'exec',
   n_format_system: 'function',
   n_build_help: 'function',
+  n_build_menu: 'function',
+  n_build_help: 'function',
+  n_build_status: 'function',
+  n_read_signals: 'exec',
+  n_format_signals: 'function',
   n_signal_alert_in: 'link in',
   n_build_alert: 'function',
   n_telegram_sender: 'telegram sender'
@@ -161,5 +169,47 @@ const envReferences = flow.map(collectEnvReferences).join('\n') + '\n' + helperS
 for (const envName of ['TNSN_REPO_ROOT', 'TNSN_SIGNAL_HISTORY_PATH', 'TNSN_AUDIT_LOG_PATH', 'TNSN_C2_URL', 'TNSN_SIGNAL_FETCH_URL', 'TNSN_NODE_RED_API']) {
   assert(envReferences.includes(envName), `operator UI must reference ${envName}`);
 }
+const commandValues = asSet(commandRules.map((rule) => rule.v));
+for (const command of ['/start', '/menu', '/help', '/status', '/signals']) {
+  assert(commandValues.has(command), `command router missing route for ${command}`);
+}
+assert(commandRules.some((rule) => rule.t === 'else'), 'command router must include an else route');
+assert(commandRouter.outputs === 6, 'command router must expose 6 outputs');
+
+const callbackRouter = nodesById.get('n_callback_router');
+const callbackRules = callbackRouter.rules || [];
+const callbackValues = asSet(callbackRules.map((rule) => rule.v));
+for (const action of ['ui:menu', 'ui:help', 'ui:status', 'ui:signals']) {
+  assert(callbackValues.has(action), `callback router missing action for ${action}`);
+}
+assert(callbackRules.some((rule) => rule.t === 'else'), 'callback router must include an else route');
+assert(callbackRouter.outputs === 5, 'callback router must expose 5 outputs');
+
+const menuBuilder = nodesById.get('n_build_menu');
+assert(menuBuilder.func.includes('inline_keyboard'), 'main menu builder must create an inline keyboard');
+assert(menuBuilder.func.includes('ui:status'), 'main menu builder must expose a status button');
+assert(menuBuilder.func.includes('ui:signals'), 'main menu builder must expose a signals button');
+
+const helpBuilder = nodesById.get('n_build_help');
+assert(helpBuilder.func.includes('/menu - open the inline control surface'), 'help builder must describe /menu');
+
+const statusBuilder = nodesById.get('n_build_status');
+assert(statusBuilder.func.includes('signal_history'), 'status builder must expose the signal history path');
+assert(statusBuilder.func.includes('audit_log'), 'status builder must expose the audit log path');
+
+const signalExec = nodesById.get('n_read_signals');
+assert(signalExec.command.includes('tail -n 5'), 'signal reader must tail the latest signals');
+assert(signalExec.command.includes('TNSN_SIGNAL_HISTORY_PATH'), 'signal reader must use the signal history env var');
+
+const signalFormatter = nodesById.get('n_format_signals');
+assert(signalFormatter.func.includes('Recent signals:'), 'signals formatter must label recent signals');
+assert(signalFormatter.func.includes('ui:signals'), 'signals formatter must include a refresh action');
+
+const alertBuilder = nodesById.get('n_build_alert');
+assert(alertBuilder.func.includes('🚨 TNSN Signal Alert'), 'alert builder must label Telegram alerts');
+assert(alertBuilder.func.includes('ui:menu'), 'alert builder must include a menu action');
+
+const sender = nodesById.get('n_telegram_sender');
+assert(Array.isArray(sender.wires), 'telegram sender must expose wires array');
 
 console.log(`PASS: validated ${flow.length} flow nodes in ${flowPath}`);
