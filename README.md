@@ -4,6 +4,9 @@ Operational repo for the TNSN local-first workstation and control surface.
 
 ## Current Node-RED scope
 
+This repo includes a demo-ready Telegram operator control bundle for the TNSN system:
+
+- `node-red/flows/tnsn-telegram-control.json` — Telegram control/alert flow export with a full inline operator UI.
 This repo now includes a versioned Node-RED Telegram control bundle for the TNSN system:
 
 - `node-red/flows/tnsn-telegram-control.json` — Telegram control/alert flow export with inline UI.
@@ -11,6 +14,21 @@ This repo now includes a versioned Node-RED Telegram control bundle for the TNSN
 - `scripts/install-node-red-telegram.sh` — installs the Telegram node into the active Node-RED user directory.
 - `scripts/import-node-red-flow.sh` — imports the versioned flow into a running local Node-RED instance via the admin API.
 - `scripts/repair-node-red-credentials.sh` — inspects, backs up, and optionally resets broken Node-RED credential files.
+- `scripts/test-node-red-flow.js` — validates the exported Node-RED flow structure, routes, and key Telegram operator behaviors.
+- `scripts/telegram-operator/*.js` — local helper scripts used by Node-RED exec nodes to load status, signals, audit history, system info, and manual fetch results.
+
+## Operator UI capabilities
+
+The Telegram flow is designed for operator use without typing after `/start`.
+It provides:
+
+- `/start`, `/menu`, `/help`, `/status`, `/signals`, `/fetch`, `/audit`, and `/system` command handling.
+- inline-button navigation for `ui:menu`, `ui:status`, `ui:signals`, `ui:fetch`, `ui:audit`, `ui:system`, and `ui:help`.
+- system status with Node-RED availability, last signal fetch time, uptime, memory, and host info.
+- latest signals from `signal-history.jsonl` with severity, summary, source, time, and link.
+- latest audit entries from `audit.jsonl`.
+- manual fetch triggering through the existing control endpoint.
+- signal alert delivery into the same Telegram control surface.
 - `scripts/test-node-red-flow.js` — validates the exported Node-RED flow structure, routes, and key Telegram UI behavior.
 
 ## Flow intent
@@ -49,6 +67,13 @@ Copy `node-red/config/env.example` into your Node-RED environment management pat
 - `TNSN_TELEGRAM_POLL_INTERVAL`
 - `TNSN_TELEGRAM_UI_MODE`
 - `TNSN_NODE_RED_CREDENTIAL_SECRET`
+- `TNSN_REPO_ROOT`
+- `TNSN_SIGNAL_HISTORY_PATH`
+- `TNSN_AUDIT_LOG_PATH`
+- `TNSN_C2_URL`
+- `TNSN_SIGNAL_FETCH_URL`
+- `TNSN_NODE_RED_API`
+- `TNSN_ALLOWED_COMMANDS`
 - `TNSN_SIGNAL_HISTORY_PATH`
 - `TNSN_ALLOWED_COMMANDS`
 - `TNSN_NODE_RED_API`
@@ -76,4 +101,5 @@ The `--force-reset` path is intentionally explicit because it removes the existi
 
 ## Flow validation
 
+Run `node scripts/test-node-red-flow.js` to validate the exported Telegram flow before importing it into Node-RED. The validator checks JSON shape, unique node IDs, valid wire targets, required Telegram nodes, command routes, callback routes, and the operator UI actions required for the demo.
 Run `node scripts/test-node-red-flow.js` to validate the exported Telegram flow before importing it into Node-RED. The validator checks JSON shape, unique node IDs, valid wire targets, required Telegram nodes, command routes, callback routes, and key inline UI behaviors.
