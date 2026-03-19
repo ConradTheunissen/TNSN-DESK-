@@ -5,6 +5,7 @@
     "label": "TNSN Telegram Control Layer",
     "disabled": false,
     "info": "Telegram control and inline UI layer for the TNSN Node-RED system."
+    "info": "Telegram control and alert layer for the TNSN Node-RED system."
   },
   {
     "id": "cfg_tnsn_telegram_bot",
@@ -25,6 +26,9 @@
     "publicbotport": "8443",
     "privatekey": "",
     "certificate": "",
+    "sockport": "6667",
+    "sockusername": "anonymous",
+    "verifypeer": false,
     "useselfsignedcertificate": false,
     "sslterminated": false,
     "verboselogging": false
@@ -48,11 +52,13 @@
     "saveDataDir": "",
     "filterCommands": false,
     "x": 140,
+    "x": 150,
     "y": 140,
     "wires": [
       [
         "n_capture_chat",
         "n_normalize_command"
+        "n_cmd_router"
       ],
       []
     ]
@@ -72,6 +78,7 @@
       }
     ],
     "x": 390,
+    "x": 380,
     "y": 80,
     "wires": [
       []
@@ -102,6 +109,7 @@
     "z": "tab_tnsn_telegram",
     "name": "Route Telegram command",
     "property": "tnsnCommand",
+    "property": "payload.content",
     "propertyType": "msg",
     "rules": [
       {
@@ -260,6 +268,11 @@
         "n_build_help"
       ],
       [
+    "outputs": 3,
+    "x": 390,
+    "y": 140,
+    "wires": [
+      [
         "n_build_status"
       ],
       [
@@ -314,6 +327,7 @@
     "z": "tab_tnsn_telegram",
     "name": "Build /status response",
     "func": "const now = new Date().toISOString();\nconst signalPath = env.get('TNSN_SIGNAL_HISTORY_PATH') || '/opt/tnsn/logs/signal-history.jsonl';\nconst auditPath = env.get('TNSN_AUDIT_LOG_PATH') || '/opt/tnsn/logs/audit.jsonl';\nconst chatId = msg.payload?.chatId || flow.get('chatId');\nconst opts = {\n  reply_markup: JSON.stringify({\n    inline_keyboard: [\n      [\n        { text: 'Recent Signals', callback_data: 'ui:signals' },\n        { text: 'Help', callback_data: 'ui:help' }\n      ],\n      [\n        { text: 'Main Menu', callback_data: 'ui:menu' }\n      ]\n    ]\n  })\n};\nmsg.payload = {\n  chatId,\n  type: 'message',\n  content: [\n    'TNSN status: online',\n    `timestamp: ${now}`,\n    `signal_history: ${signalPath}`,\n    `audit_log: ${auditPath}`,\n    'services: supervisor=ready, auditable_agent=ready, signal_engine=ready'\n  ].join('\\n'),\n  options: opts\n};\nreturn msg;",
+    "func": "const now = new Date().toISOString();\nconst signalPath = env.get('TNSN_SIGNAL_HISTORY_PATH') || '/opt/tnsn/logs/signal-history.jsonl';\nconst auditPath = env.get('TNSN_AUDIT_LOG_PATH') || '/opt/tnsn/logs/audit.jsonl';\nconst chatId = msg.payload.chatId || flow.get('chatId');\nmsg.payload = {\n  chatId,\n  type: 'message',\n  content: [\n    'TNSN status: online',\n    `timestamp: ${now}`,\n    `signal_history: ${signalPath}`,\n    `audit_log: ${auditPath}`,\n    'services: supervisor=ready, auditable_agent=ready, signal_engine=ready'\n  ].join('\\n')\n};\nreturn msg;",
     "outputs": 1,
     "noerr": 0,
     "initialize": "",
@@ -321,6 +335,8 @@
     "libs": [],
     "x": 960,
     "y": 160,
+    "x": 690,
+    "y": 100,
     "wires": [
       [
         "n_telegram_sender"
@@ -341,6 +357,8 @@
     "name": "Tail recent signals",
     "x": 930,
     "y": 220,
+    "x": 660,
+    "y": 180,
     "wires": [
       [
         "n_format_signals"
@@ -355,6 +373,7 @@
     "z": "tab_tnsn_telegram",
     "name": "Format /signals response",
     "func": "const chatId = msg.payload?.chatId || flow.get('chatId');\nconst lines = String(msg.payload || '').trim();\nconst opts = {\n  reply_markup: JSON.stringify({\n    inline_keyboard: [\n      [\n        { text: 'Refresh Signals', callback_data: 'ui:signals' },\n        { text: 'System Status', callback_data: 'ui:status' }\n      ],\n      [\n        { text: 'Main Menu', callback_data: 'ui:menu' }\n      ]\n    ]\n  })\n};\nmsg.payload = {\n  chatId,\n  type: 'message',\n  content: lines ? `Recent signals:\n${lines}` : 'No recent signals found.',\n  options: opts\n};\nreturn msg;",
+    "func": "const lines = String(msg.payload || '').trim();\nconst content = lines ? `Recent signals:\n${lines}` : 'No recent signals found.';\nmsg.payload = {\n  chatId: flow.get('chatId'),\n  type: 'message',\n  content\n};\nreturn msg;",
     "outputs": 1,
     "noerr": 0,
     "initialize": "",
@@ -362,6 +381,8 @@
     "libs": [],
     "x": 1180,
     "y": 220,
+    "x": 920,
+    "y": 180,
     "wires": [
       [
         "n_telegram_sender"
@@ -376,6 +397,8 @@
     "links": [],
     "x": 160,
     "y": 360,
+    "x": 155,
+    "y": 260,
     "wires": [
       [
         "n_build_alert"
@@ -388,6 +411,7 @@
     "z": "tab_tnsn_telegram",
     "name": "Build alert message",
     "func": "const chatId = msg.chatId || flow.get('chatId');\nconst classification = msg.classification || msg.topic || 'unclassified';\nconst score = msg.score ?? 'n/a';\nconst title = msg.title || msg.headline || 'Signal alert';\nconst summary = msg.summary || msg.payload?.summary || msg.payload?.description || '';\nconst opts = {\n  reply_markup: JSON.stringify({\n    inline_keyboard: [\n      [\n        { text: 'Recent Signals', callback_data: 'ui:signals' },\n        { text: 'System Status', callback_data: 'ui:status' }\n      ],\n      [\n        { text: 'Main Menu', callback_data: 'ui:menu' }\n      ]\n    ]\n  })\n};\nmsg.payload = {\n  chatId,\n  type: 'message',\n  content: [\n    '\ud83d\udea8 TNSN Signal Alert',\n    `class: ${classification}`,\n    `score: ${score}`,\n    `title: ${title}`,\n    summary ? `summary: ${summary}` : null\n  ].filter(Boolean).join('\\n'),\n  options: opts\n};\nreturn msg;",
+    "func": "const chatId = msg.chatId || flow.get('chatId');\nconst classification = msg.classification || msg.topic || 'unclassified';\nconst score = msg.score ?? 'n/a';\nconst title = msg.title || msg.headline || 'Signal alert';\nconst summary = msg.summary || msg.payload?.summary || msg.payload?.description || '';\nmsg.payload = {\n  chatId,\n  type: 'message',\n  content: [\n    '\ud83d\udea8 TNSN Signal Alert',\n    `class: ${classification}`,\n    `score: ${score}`,\n    `title: ${title}`,\n    summary ? `summary: ${summary}` : null\n  ].filter(Boolean).join('\\n')\n};\nreturn msg;",
     "outputs": 1,
     "noerr": 0,
     "initialize": "",
@@ -395,6 +419,8 @@
     "libs": [],
     "x": 420,
     "y": 360,
+    "x": 410,
+    "y": 260,
     "wires": [
       [
         "n_alert_rate_limit"
@@ -420,6 +446,8 @@
     "outputs": 1,
     "x": 690,
     "y": 360,
+    "x": 660,
+    "y": 260,
     "wires": [
       [
         "n_telegram_sender"
@@ -432,6 +460,7 @@
     "z": "tab_tnsn_telegram",
     "name": "Unknown command help",
     "func": "const chatId = msg.payload?.chatId || flow.get('chatId');\nconst opts = {\n  reply_markup: JSON.stringify({\n    inline_keyboard: [\n      [\n        { text: 'Open Menu', callback_data: 'ui:menu' },\n        { text: 'Help', callback_data: 'ui:help' }\n      ]\n    ]\n  })\n};\nmsg.payload = {\n  chatId,\n  type: 'message',\n  content: 'Unknown command. Available commands: /menu, /status, /signals, /help',\n  options: opts\n};\nreturn msg;",
+    "func": "msg.payload = {\n  chatId: msg.payload.chatId || flow.get('chatId'),\n  type: 'message',\n  content: 'Available commands: /status, /signals'\n};\nreturn msg;",
     "outputs": 1,
     "noerr": 0,
     "initialize": "",
@@ -439,6 +468,8 @@
     "libs": [],
     "x": 960,
     "y": 300,
+    "x": 690,
+    "y": 340,
     "wires": [
       [
         "n_telegram_sender"
@@ -458,5 +489,20 @@
     "wires": [
       []
     ]
+    "x": 1180,
+    "y": 180,
+    "wires": [
+      []
+    ]
+  },
+  {
+    "id": "n_readme",
+    "type": "comment",
+    "z": "tab_tnsn_telegram",
+    "name": "Configure bot token/chat in telegram bot config node after import.",
+    "info": "",
+    "x": 340,
+    "y": 40,
+    "wires": []
   }
 ]

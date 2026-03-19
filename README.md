@@ -24,6 +24,22 @@ It provides:
 - a `link in` entry point for Signal Engine alerts.
 - a shared Telegram sender node to centralize outbound delivery.
 - inline keyboard actions attached to system responses and alert messages.
+This repo now includes a versioned Node-RED control-layer bundle for the TNSN system:
+
+- `node-red/flows/tnsn-telegram-control.json` — Telegram control/alert flow export.
+- `node-red/config/env.example` — environment variable template for Node-RED runtime configuration.
+- `scripts/install-node-red-telegram.sh` — installs the Telegram node into the active Node-RED user directory.
+- `scripts/import-node-red-flow.sh` — imports the versioned flow into a running local Node-RED instance via the admin API.
+
+## Flow intent
+
+The included flow focuses on the currently identified blocker: the Telegram output and command layer.
+It provides:
+
+- `/status` command handling.
+- `/signals` command handling by tailing recent signal history.
+- a `link in` entry point for Signal Engine alerts.
+- a shared Telegram sender node to centralize outbound delivery.
 
 ## Runtime variables
 
