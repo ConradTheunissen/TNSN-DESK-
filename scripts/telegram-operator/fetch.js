@@ -1,7 +1,7 @@
 #!/usr/bin/env node
-const { env, httpJson, runJsonMain } = require('./lib');
+const { env, httpJson, printJson } = require('./lib');
 
-runJsonMain(async () => {
+(async () => {
   const fetchUrl = env('TNSN_SIGNAL_FETCH_URL') || env('TNSN_C2_URL', 'http://127.0.0.1:1880/api/c2');
   const body = {
     action: 'fetch_signals',
@@ -26,24 +26,23 @@ runJsonMain(async () => {
       (Array.isArray(payload.items) ? payload.items.length : undefined) ??
       0;
 
-    return {
+    printJson({
       ok: response.ok,
-      degraded: !response.ok,
       status: response.status,
       statusText: response.statusText,
       count,
       fetchUrl,
       payload: response.json || response.text || ''
-    };
+    });
   } catch (error) {
-    return {
+    printJson({
       ok: false,
-      degraded: true,
       status: 0,
       statusText: error.message,
       count: 0,
       fetchUrl,
       payload: ''
-    };
+    });
+    process.exitCode = 1;
   }
-});
+})();

@@ -7,34 +7,26 @@ const {
   detectSource,
   detectLink,
   detectSeverity,
-  fileExists,
-  runJsonMain
+  printJson
 } = require('./lib');
 
-runJsonMain(async () => {
-  const args = process.argv.slice(2);
-  const limitIndex = args.indexOf('--limit');
-  const limit = limitIndex >= 0 ? Number(args[limitIndex + 1] || '10') : 10;
-  const signalPath = env('TNSN_SIGNAL_HISTORY_PATH', '/opt/tnsn/logs/signal-history.jsonl');
-  const exists = fileExists(signalPath);
-  const rows = exists
-    ? readJsonl(signalPath, limit)
-        .filter((entry) => !entry._invalid)
-        .map((entry) => ({
-          time: detectTimestamp(entry),
-          severity: detectSeverity(entry),
-          summary: detectSummary(entry),
-          source: detectSource(entry),
-          link: detectLink(entry)
-        }))
-    : [];
+const args = process.argv.slice(2);
+const limitIndex = args.indexOf('--limit');
+const limit = limitIndex >= 0 ? Number(args[limitIndex + 1] || '10') : 10;
+const signalPath = env('TNSN_SIGNAL_HISTORY_PATH', '/opt/tnsn/logs/signal-history.jsonl');
+const rows = readJsonl(signalPath, limit)
+  .filter((entry) => !entry._invalid)
+  .map((entry) => ({
+    time: detectTimestamp(entry),
+    severity: detectSeverity(entry),
+    summary: detectSummary(entry),
+    source: detectSource(entry),
+    link: detectLink(entry)
+  }));
 
-  return {
-    ok: true,
-    degraded: !exists,
-    reason: exists ? '' : `signal history missing at ${signalPath}`,
-    count: rows.length,
-    limit,
-    signals: rows
-  };
+printJson({
+  ok: true,
+  count: rows.length,
+  limit,
+  signals: rows
 });

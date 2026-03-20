@@ -5,17 +5,15 @@ const {
   detectTimestamp,
   getMemorySnapshot,
   httpJson,
+  printJson,
   os,
-  safeExec,
-  fileExists,
-  runJsonMain
+  safeExec
 } = require('./lib');
 
-runJsonMain(async () => {
+(async () => {
   const signalPath = env('TNSN_SIGNAL_HISTORY_PATH', '/opt/tnsn/logs/signal-history.jsonl');
   const nodeRedApi = env('TNSN_NODE_RED_API', 'http://127.0.0.1:1880');
-  const signalHistoryExists = fileExists(signalPath);
-  const latestSignal = signalHistoryExists ? (readJsonl(signalPath, 1).pop() || {}) : {};
+  const latestSignal = readJsonl(signalPath, 1).pop() || {};
   const memory = getMemorySnapshot();
   let nodeRed = { available: false, status: 0, statusText: 'unreachable' };
 
@@ -30,16 +28,14 @@ runJsonMain(async () => {
     nodeRed = { available: false, status: 0, statusText: error.message };
   }
 
-  return {
+  printJson({
     ok: true,
-    degraded: !signalHistoryExists,
     generatedAt: new Date().toISOString(),
     nodeRed,
-    signalHistoryExists,
-    lastSignalFetch: signalHistoryExists ? detectTimestamp(latestSignal) : 'unavailable',
+    lastSignalFetch: detectTimestamp(latestSignal),
     uptime: safeExec('uptime -p') || `${Math.round(os.uptime() / 60)} minutes`,
     memory,
     hostname: os.hostname(),
     platform: `${os.platform()} ${os.release()}`
-  };
-});
+  });
+})();

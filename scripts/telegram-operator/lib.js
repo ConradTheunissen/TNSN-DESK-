@@ -125,24 +125,6 @@ function printJson(data) {
   process.stdout.write(JSON.stringify(data));
 }
 
-function fileExists(filePath) {
-  return fs.existsSync(filePath);
-}
-
-async function runJsonMain(handler) {
-  try {
-    const result = await handler();
-    printJson(result);
-  } catch (error) {
-    printJson({
-      ok: false,
-      degraded: true,
-      error: error instanceof Error ? error.message : String(error || 'unknown error')
-    });
-    process.exitCode = 1;
-  }
-}
-
 module.exports = {
   env,
   safeExec,
@@ -156,8 +138,6 @@ module.exports = {
   getMemorySnapshot,
   httpJson,
   printJson,
-  fileExists,
-  runJsonMain,
   os,
   path,
   fs
